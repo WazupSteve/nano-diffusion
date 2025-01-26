@@ -50,6 +50,8 @@ class Unet(nn.Module):
         else:
             time_dim = None
             self.time_mlp = None
+        
+        self.null_embedding = nn.Parameter(torch.randn(1, time_dim))
 
         # layers
         dims: List[int] = [init_dim, *map(lambda m: dim * m, dim_mults)]
@@ -97,9 +99,16 @@ class Unet(nn.Module):
             block_klass(dim, dim), nn.Conv2d(dim, out_dim, 1)
         )
 
-    def forward(self, x, time):
+    def forward(self, x, time,cond = None):
         t = self.time_mlp(time) if exists(self.time_mlp) else None
-
+        #conditional
+        if cond is not None:
+            t += self.null_embedding
+        else:
+            #non-conditional
+            null_embed = self.null_embedding.repeat(x.shape[0],1)
+            t += null_embed
+        
         h = []
 
         x = self.init_conv(x)
